@@ -134,15 +134,17 @@ def main():
 
     #append the current time in the last run time sheet
     body = {'values':[[datetime.now().strftime("%m/%d/%Y %H:%M:%S")]]}
-    #result = update_sheet('15pirsOaBtQ5gJgw_ZFGuBx5kGQmuWZcZb-AN8feCgfQ','Sheet1!A:A',body)
-    #if not result:
-       # print('Runtime was not appended')
+    result = update_sheet('15pirsOaBtQ5gJgw_ZFGuBx5kGQmuWZcZb-AN8feCgfQ','Sheet1!A:A',body)
+    if not result:
+        print('Runtime was not appended')
 
     #get values from mentorship from
-    mentorshipFormValues = get_sheet('1HGXZS72XRe5Q5N-qrZHVUU7krBjGplFqA3XYUVmU_LQ','Form Responses 1!A2:AH')
+    #mentorshipFormValues = get_sheet('1HGXZS72XRe5Q5N-qrZHVUU7krBjGplFqA3XYUVmU_LQ','Form Responses 1!A2:AH')
+    mentorshipFormValues = get_sheet('17K--alF7j4k11XaLMYKccfzRTbPtFF4PSFaoTKAGY9Y','Form Responses 1!A2:AH')
     if not mentorshipFormValues:
         print('No mentorship form data returned.')
     else:
+        print('Returned form responses')
         mentorDict = {}
         menteeDict = {}
 
@@ -153,13 +155,11 @@ def main():
             if datetime.strptime(row[0], "%m/%d/%Y %H:%M:%S") > lastRuntime:
                 if row[14] == 'Mentor':
                     mentorDict[row[3]] = [row[0], row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[12],row[13],row[26],row[27],row[28],row[29],row[30],row[31],row[32],row[33]]
-
                 elif row[14] == 'Mentee':
                     menteeDict[row[3]] = [row[0], row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[20],row[21],row[22],row[23],row[24],row[25],row[31],row[32],row[33]]
                 elif row[14] == 'Both':
                     menteeDict[row[3]] = [row[0], row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[20],row[21],row[22],row[23],row[24],row[25],row[31],row[32],row[33]]
                     mentorDict[row[3]] = [row[0], row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[12],row[13],row[15],row[16],row[17],row[18],row[19],row[31],row[32],row[33]]
-
                 else:
                     print('Not denoted as mentor/mentee/both. Email: '+row[3]+ ' value: '+row[14])
     
@@ -168,10 +168,10 @@ def main():
     if not menteeWaitlistValues:
         print('No mentee waitlist data returned.')
 
+
     for idx, row in enumerate(menteeWaitlistValues):
         #checking if the email is in the new mentee dictionary and the mentee has not been matched
         if row[3] in menteeDict and len(row) == 21:
-
             #updating the timestamp to be the original sign up date
             newMenteeValues = menteeDict[row[3]]
             newMenteeValues[0] = row[0]
@@ -181,9 +181,9 @@ def main():
             result = set_sheet('1vxqr3gdO-etFuOI7FV1HlVPr1q4r9fS0Mra3ExX_L6w','Sheet1!A'+str(idx+2)+':U',body)
             if not result:
                 print('ERROR update mentee waitlist. Email: '+row[3])
-           
-            #remove mentee from menteeDict
             else:
+                print('Updated mentee '+row[3])
+                #remove mentee from menteeDict
                 del menteeDict[row[3]]
 
     #adding the remaining new mentee values to an array
@@ -197,22 +197,37 @@ def main():
     if not result:
        print('Mentees was not appended to waitlist')
 
+    else:
+        print('Updated mentee waitlist')
+
+
     #get all mentees from waitlist
-    menteeWaitlistValues = get_sheet('1vxqr3gdO-etFuOI7FV1HlVPr1q4r9fS0Mra3ExX_L6w','Sheet1!A2:V')
-    if not menteeWaitlistValues:
+    menteeWaitlistValues2 = get_sheet('1vxqr3gdO-etFuOI7FV1HlVPr1q4r9fS0Mra3ExX_L6w','Sheet1!A2:V')
+    if not menteeWaitlistValues2:
         print('No mentee waitlist data returned.')
 
     #removing any matched mentees
-    for row in menteeWaitlistValues:
-        if len(row) == 22:
-            menteeWaitlistValues.remove(row)
+    for row1 in menteeWaitlistValues2:
+        if len(row1) == 22:
+            menteeWaitlistValues.remove(row1)
 
-    #MAGIC TIME! Loop through each mentor and apply match algorithm 
+
+    #MAGIC TIME! Loop through each mentor and apply match algorithm         
+
+    print('Begining matching')
+
     matchArray = []
     for key in mentorDict:
         mentorArray = mentorDict[key]
+        #for all the matches to go into
+        potentialMatchArray = []
+
         for menteeArray in menteeWaitlistValues:
             matchScore = 0
+
+            #do not want to match the same person to themselves
+            if mentorArray[3] == menteeArray[3]:
+                continue
 
             #mentor must have more years than mentee
             if float(mentorArray[8]) < float(menteeArray[8]):
@@ -280,13 +295,19 @@ def main():
 
             matchScore = (waitlistTime*.05) + (communicationScore*.05) + (locationScore*.05) + (timeScore*.05) + (personalityScore*.05) + (activityScore*.05) + (valueScore*.05) + (supportScore*.25)+ (indsutryScore*.15) + (roleScore*.15) + (positionScore*.1)
 
-            matchArray.append([str(matchScore),mentorArray[0],mentorArray[3],mentorArray[1],mentorArray[2],mentorArray[5],mentorArray[18],menteeArray[0],menteeArray[3],menteeArray[1],menteeArray[2],menteeArray[5]])
+            potentialMatchArray.append([str(matchScore),mentorArray[0],mentorArray[3],mentorArray[1],mentorArray[2],mentorArray[5],mentorArray[18],menteeArray[0],menteeArray[3],menteeArray[1],menteeArray[2],menteeArray[5]])
+
+        #sorted potential matches with by greatest match score
+        sortedArray = sorted(potentialMatchArray, key=lambda match:match[0], reverse=True)
+
+        #appending top 3 matches to match array
+        matchArray = matchArray+sortedArray[:7]
 
     #append matches to potential match sheet
     body = {'values':matchArray}
-    result = update_sheet('1QVPlpdxvGyQxB8jf6zD_Ci9xro-aXxVbyiwkRb6Oito','Sheet1!A2:L',body)
+    result = update_sheet('1QVPlpdxvGyQxB8jf6zD_Ci9xro-aXxVbyiwkRb6Oito','Sheet3!A2:L',body)
     if not result:
-       print('No potential matches appended')
+        print('No potential matches appended')
     else:
         print('Potentail matches have been appended to file')
 
